@@ -1,0 +1,105 @@
+// Code.gs
+function doPost(e) {
+  try {
+    // 解析傳入的資料
+    var data = JSON.parse(e.postData.contents);
+
+    // 連接到 Google Sheet（第一次執行會自動建立）
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('報名資料');
+
+    // 如果工作表不存在，建立新的
+    if (!sheet) {
+      sheet = ss.insertSheet('報名資料');
+      // 建立標題列
+      sheet.appendRow([
+        '報名時間', 
+        '姓名', 
+        '學號', 
+        '電子郵件', 
+        '電話', 
+        '系所', 
+        '參加場次', 
+        '興趣活動'
+      ]);
+
+      // 設定標題列格式
+      var headerRange = sheet.getRange(1, 1, 1, 8);
+      headerRange.setBackground('#667eea');
+      headerRange.setFontColor('#ffffff');
+      headerRange.setFontWeight('bold');
+    }
+
+    // 新增資料到工作表
+    sheet.appendRow([
+      new Date().toLocaleString('zh-TW', {timeZone: 'Asia/Taipei'}),
+      data.name,
+      data.studentId,
+      data.email,
+      data.phone,
+      data.department,
+      data.session,
+      data.activities.join(', ')
+    ]);
+
+    // 發送郵件通知（請修改成你的 Gmail 地址）
+    var emailBody = 
+      '🎉 新的迎新活動報名\n\n' +
+      '═══════════════════════\n' +
+      '姓名：' + data.name + '\n' +
+      '學號：' + data.studentId + '\n' +
+      '電子郵件：' + data.email + '\n' +
+      '電話：' + data.phone + '\n' +
+      '系所：' + data.department + '\n' +
+      '參加場次：' + data.session + '\n' +
+      '興趣活動：' + data.activities.join(', ') + '\n' +
+      '═══════════════════════\n\n' +
+      '報名時間：' + new Date().toLocaleString('zh-TW', {timeZone: 'Asia/Taipei'}) + '\n\n' +
+      '📊 查看完整資料：' + ss.getUrl();
+
+    // ⚠️ 重要：請將下面的信箱改成你的 Gmail 地址
+    MailApp.sendEmail({
+      to: 'kingryan34567@gmail.com',
+      subject: '🎉 新的迎新活動報名 - ' + data.name,
+      body: emailBody
+    });
+
+    // 回傳成功訊息
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        'result': 'success',
+        'message': '報名成功'
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch(error) {
+    // 回傳錯誤訊息
+    Logger.log('錯誤：' + error.toString());
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        'result': 'error',
+        'message': error.toString()
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// 測試函數
+function test() {
+  var testData = {
+    postData: {
+      contents: JSON.stringify({
+        name: '測試學生',
+        studentId: 'A123456789',
+        email: '123456789@example.com',
+        phone: '0912345678',
+        department: '資訊工程系',
+        session: '上午場',
+        activities: ['團康遊戲', '校園導覽']
+      })
+    }
+  };
+
+  var result = doPost(testData);
+  Logger.log(result.getContent());
+}
